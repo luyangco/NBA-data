@@ -1,0 +1,306 @@
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>NBA Stats</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+  		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>			
+		<script src="http://code.highcharts.com/maps/highmaps.js"></script>		
+		<link type="text/css" rel="stylesheet" href="<c:url value="/resources/css/screen.css"  />" >
+	</head>
+	<body>
+		<div>						
+			<form id="clusterAnalysis">
+				<label for="clusterNumber">Cluster Number: </label>
+				<input type="number" name="clusterNumber" id="clusterNumber" />
+				<input type="submit" value="Show Player Stats" id="submit-button" />
+				<div id="loading-indicator"></div>
+			</form>		
+			
+			<form id="filter">
+				<label for="groupNumber">Group Filter:</label>
+				<input type="number" name="groupNumber" id="groupNumber" />
+				<input type="submit" value="Filter" id="submit-button-2" />
+				<div id="loading-indicator-2"></div>
+			</form>
+			
+			<button id="drawButton">Draw Parallel Coordinate</button>
+			<div id="graph-container" style="height:500px;"></div>
+			
+			<div class="ex_highlight_row">
+				<table class="sortable" id="table-container">
+				<thead id="table-header-container">
+					<tr>		
+						<th class="sorting">Group</th>									
+						<th class="sorting">Name</th>
+						<th class="sorting">Weight(lbs)</th>
+						<th class="sorting">Height(cm)</th>
+						<th class="sorting">Position</th>
+						<th class="sorting">Primary Position</th>
+						<th class="sorting">G</th>
+						<th class="sorting">Min</th>
+						<th class="sorting">Pts</th>
+						<th class="sorting">FGA</th>
+						<th class="sorting">FGP</th>
+						<th class="sorting">3PA</th>
+						<th class="sorting">3PP</th>
+						<th class="sorting">FTA</th>
+						<th class="sorting">FTP</th>
+						<th class="sorting">AR</th>
+						<th class="sorting">TOR</th>
+						<th class="sorting">ORB</th>
+						<th class="sorting">DRB</th>
+						<th class="sorting">TRB</th>
+						<th class="sorting">STL</th>
+						<th class="sorting">BLK</th>
+						<th class="sorting">Jersey Number</th>
+						<th class="sorting">Birth of date</th>
+						<th class="sorting">Birth Place</th>
+					</tr>
+				</thead>
+				</table>
+			</div>				
+		</div>
+		
+		<script type="text/javascript" src="<c:url value="/resources/js/jquery.dataTables.min.js" /> "></script>
+		<!--  <script type="text/javascript" src="<c:url value="/resources/js/d3.min.js" /> "></script>  -->
+		<script type="text/javascript" src="<c:url value="/resources/js/d3.min.js" /> "></script>
+		
+		<script>
+				
+			$('#clusterAnalysis').submit(function(e) {
+				var clusterNumber = $('#clusterNumber').val();
+				
+				if (!clusterNumber) {
+					$('#clusterNumber').focus();
+				}
+				$('#loading-indicator').css('display', 'inline-block');
+				
+				$.getJSON('${pageContext.request.contextPath}/api/cluster/' + clusterNumber, function(combo) {
+					
+					$("#table-container tbody").remove();					
+					
+			        for (var i = 0; i < combo.length; i++) {
+			            tr = $('<tr/>');
+			            tr.append("<td>" + combo[i].v.group + "</td>");
+			            tr.append("<td>" + combo[i].profile.first_name + " " + combo[i].profile.last_name + "</td>");
+			            tr.append("<td>" + combo[i].profile.weight + "</td>");
+			            tr.append("<td>" + (combo[i].profile.height * 2.54).toFixed(0) + "</td>");
+			            tr.append("<td>" + combo[i].profile.postion + "</td>");
+			            tr.append("<td>" + combo[i].profile.primary_position + "</td>");
+			            tr.append("<td>" + combo[i].stats.games_played + "</td>");
+			            tr.append("<td>" + (combo[i].stats.minutes / combo[i].stats.games_played).toFixed(1) + "</td>");
+			            tr.append("<td>" + (combo[i].stats.points / combo[i].stats.games_played).toFixed(1) + "</td>");
+			            tr.append("<td>" + combo[i].v.two_atts.toFixed(1) + "</td>");
+			            tr.append("<td>" + combo[i].v.two_pct.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.three_atts.toFixed(1) + "</td>");
+			            tr.append("<td>" + combo[i].v.three_pct.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.ft_atts.toFixed(1) + "</td>"); 
+			            tr.append("<td>" + combo[i].v.ft_pct.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.ar.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.tor.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.or.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.dr.toFixed(3) + "</td>");
+			            tr.append("<td>" + (combo[i].v.or + combo[i].v.dr).toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.stls.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].v.blks.toFixed(3) + "</td>");
+			            tr.append("<td>" + combo[i].profile.jersey_number + "</td>");
+			            tr.append("<td>" + combo[i].profile.birthDate + "</td>");
+			            tr.append("<td>" + combo[i].profile.birth_place + "</td>");
+			            
+			            $('#table-container').append(tr);
+			        }
+			        
+			        if (typeof oTable === 'undefined') {
+						oTable = $('#table-container').dataTable({
+							"bStateSave": true,
+							"bPaginate": false,
+							"sDom": '<"top"if>rt<"bottom"lp><"clear">',
+						});
+					} else {
+						oTable.fnDestroy();	
+						oTable.dataTable({
+							"bStateSave": true,
+							"bPaginate": false,
+							"sDom": '<"top"if>rt<"bottom"lp><"clear">',
+						});
+					}					
+					
+					$('#table-container').show();
+					$('#loading-indicator').hide();
+				});
+				
+				e.preventDefault(); // prevent actual form submit and page reload
+			});
+			
+			/*
+			$('#drawButton').click(function(e) {
+				// Start from here
+									
+				// Build an option
+				var options={
+		           chart: {
+		           	   renderTo:'graph-container',
+		               type: 'heatmap'
+		           },
+		           title: {
+		               text: 'NBA players performance analysis'
+		           },
+		           subtitle: {
+		               text: '2013-14 regular season'
+		           },
+		           xAxis: {
+		               categories: ['G', 'Min', 'Pts', 'FGA', 'FGP', '3PA', '3PP', 'FTA', 'FTP', 'ORB', 'DRB', 'TRB', 'STL', 'BLK'],  // 14
+		               tickPixelInterval: 10,
+		               min: null,
+		               max: null,
+		           },
+		           yAxis: {
+		        	   title: {
+		                   text: null
+		               },
+		               labels: {
+		                   format: '{value}:00'
+		               },
+		               minPadding: 0,
+		               maxPadding: 0,
+		               startOnTick: false,
+		               endOnTick: false,
+		               tickPositions: [0, 6, 12, 18, 24],
+		               tickWidth: 1,
+		               categories: []
+		           },
+		           colorAxis: {
+		               stops: [
+		                   [0, '#3060cf'],
+		                   [0.5, '#fffbbc'],
+		                   [0.9, '#c4463a']
+		               ],
+		               min: -5
+		           },
+		           tooltip: {
+		               headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+		               pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+		                   '<td style="padding:0"><b>{point.y:1f} users</b></td></tr>',
+		               footerFormat: '</table>',
+		               shared: true,
+		               useHTML: true
+		           },
+		           
+		           //plotOptions: {
+		           //   column: {
+		           //        pointPadding: 0.2,
+		           //        borderWidth: 0
+		           //    }
+		           //},
+		           series: [{  
+		        	   name:'Points',
+		               data:[], 
+		           }]
+		   		};
+				// end of option	
+				
+					
+				var clusterNumber = $('#clusterNumber').val();
+				$.getJSON('${pageContext.request.contextPath}/api/cluster/' + clusterNumber, function(dataset){
+			    	// Draw highlight chart
+					var length=dataset.length;
+			    	for (var i = 0; i < length; i++)
+			    	{
+			    		options.yAxis.categories[i] = [dataset[i].profile.first_name + " " + dataset[i].profile.last_name];	
+			    		
+			    		options.series[i].data[0]=[dataset[i].stats.games_played]; // g
+			    		options.series[i].data[1]=[dataset[i].stats.minutes / dataset[i].stats.games_played]; //Min
+			    		options.series[i].data[2]=[dataset[i].stats.points / dataset[i].stats.games_played]; //Pts
+			    		options.series[i].data[3]=[dataset[i].v.two_atts]; //FGA
+			    		options.series[i].data[4]=[dataset[i].v.two_pct];  //FGP
+			    		options.series[i].data[5]=[dataset[i].v.three_atts]; //3PA
+			    		options.series[i].data[6]=[dataset[i].v.three_pct]; //3PP
+			    		options.series[i].data[7]=[dataset[i].v.ft_atts]; //FTA
+			    		options.series[i].data[8]=[dataset[i].v.ft_pct]; //FTP
+			    		options.series[i].data[9]=[dataset[i].v.or]; //ORB
+			    		options.series[i].data[10]=[dataset[i].v.dr]; //DRB
+			    		options.series[i].data[11]=[dataset[i].v.or + dataset[i].v.dr]; //TRB
+			    		options.series[i].data[12]=[dataset[i].v.stls]; //STL
+			    		options.series[i].data[13]=[dataset[i].v.blks]; //BLK
+			    			
+			    	}
+
+			    	var chart = new Highcharts.Chart(options);
+				});
+				// End
+			});*/
+			
+			
+			
+			
+			$('#filter').submit(function(e) {
+				var groupNumber = $('#groupNumber').val();
+				if (!groupNumber) {
+					$('#groupNumber').val(0);
+				}
+				groupNumber = $('#groupNumber').val();
+				$('#loading-indicator-2').css('display', 'inline-block');
+				
+				$.getJSON('${pageContext.request.contextPath}/api/filter/' + groupNumber, function(combo) {
+					
+					$("#table-container tbody").remove();					
+					
+			        for (var i = 0; i < combo.length; i++) {
+			            tr = $('<tr/>');
+			            tr.append("<td>" + combo[i].v.group + "</td>");
+			            tr.append("<td>" + combo[i].profile.first_name + " " + combo[i].profile.last_name + "</td>");
+			            tr.append("<td>" + combo[i].profile.weight + "</td>");
+			            tr.append("<td>" + combo[i].profile.height * 2.54 + "</td>");
+			            tr.append("<td>" + combo[i].profile.postion + "</td>");
+			            tr.append("<td>" + combo[i].profile.primary_position + "</td>");
+			            tr.append("<td>" + combo[i].profile.jersey_number + "</td>");
+			            tr.append("<td>" + combo[i].profile.birthDate + "</td>");
+			            tr.append("<td>" + combo[i].profile.birth_place + "</td>");
+			            tr.append("<td>" + combo[i].stats.games_played + "</td>");
+			            tr.append("<td>" + combo[i].stats.minutes / combo[i].stats.games_played + "</td>");
+			            tr.append("<td>" + combo[i].v.ar + "</td>");
+			            tr.append("<td>" + combo[i].v.tor + "</td>");
+			            tr.append("<td>" + combo[i].v.or + "</td>");
+			            tr.append("<td>" + combo[i].v.dr + "</td>");
+			            tr.append("<td>" + combo[i].v.stls + "</td>");
+			            tr.append("<td>" + combo[i].v.blks + "</td>");
+			            tr.append("<td>" + combo[i].v.two_atts + "</td>");
+			            tr.append("<td>" + combo[i].v.two_pct + "</td>");
+			            tr.append("<td>" + combo[i].v.three_atts + "</td>");
+			            tr.append("<td>" + combo[i].v.three_pct + "</td>");
+			            tr.append("<td>" + combo[i].v.ft_atts + "</td>"); 
+			            tr.append("<td>" + combo[i].v.ft_pct + "</td>");
+			            tr.append("<td>" + combo[i].stats.points / combo[i].stats.games_played + "</td>");
+			            
+			            $('#table-container').append(tr);
+			        }
+			        
+			        if (typeof oTable === 'undefined') {
+						oTable = $('#table-container').dataTable({
+							"bStateSave": true,
+							"bPaginate": false,
+							"sDom": '<"top"if>rt<"bottom"lp><"clear">',
+						});
+					} else {
+						oTable.fnDestroy();	
+						oTable.dataTable({
+							"bStateSave": true,
+							"bPaginate": false,
+							"sDom": '<"top"if>rt<"bottom"lp><"clear">',
+						});
+					}					
+					
+					$('#table-container').show();
+					$('#loading-indicator-2').hide();
+				});
+				
+				e.preventDefault(); // prevent actual form submit and page reload
+			});
+		</script>
+	</body>
+</html>
